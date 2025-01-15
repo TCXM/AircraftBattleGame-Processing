@@ -1,23 +1,3 @@
-class CTimer {
-    int savedTime; 
-    int totalTime; 
-    CTimer(int tempTotalTime) {
-        totalTime = tempTotalTime;
-    }
-
-    void start() {
-        savedTime = millis();
-    }
-    boolean isFinished() { 
-        int passedTime = millis()- savedTime;
-        if (passedTime > totalTime) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-}
-
 class GameManager {
     PFont ink_font;
     PImage background;
@@ -30,7 +10,9 @@ class GameManager {
     PImage hero1, hero2, hero_blowup_n1, hero_blowup_n2, hero_blowup_n3, hero_blowup_n4;
 
     Hero hero;
-    Enemy[] enemies;
+    ArrayList<Enemy> enemies = new ArrayList<Enemy>();
+    // ArrayList<Bullet> bullets = new ArrayList<Bullet>();
+    PauseResumeButten pauseResumeButten;
     GamePlayButten gamePlayButten;
 
     GameManager(){}
@@ -63,20 +45,19 @@ class GameManager {
 
         // Initialize Hero
         hero = new Hero(width / 2, 700, hero1, hero2);
-        enemies = new Enemy[4];
-        for(int i = 0; i < enemies.length; i++){
-            enemies[i] = new Enemy((i + 1) * (width / (enemies.length + 1)), 100, enemy1);
+        for(int i = 0; i < 4; i++){
+            enemies.add(new Enemy((i + 1) * (width / 5), 100, enemy1, enemy1_down1, enemy1_down2, enemy1_down3, enemy1_down4));
         }
         gamePlayButten = new GamePlayButten(width / 2, height / 2, game_play);
     }
     void update(){
         imageMode(CENTER);
         image(background, width / 2, height / 2);
-        hero.display();
-        for(int i = 0; i < enemies.length; i++){
-            enemies[i].display();
+        hero.update();
+        for (Enemy enemy : enemies) {
+            enemy.update();
         }
-        gamePlayButten.display();
+        gamePlayButten.update();
         showTitle();
     }
     void showTitle(){
@@ -87,74 +68,96 @@ class GameManager {
     }
 }
 
-class Hero{
-    int x;
-    int y;
-    PImage hero;
+class CTimer {
+    int savedTime; 
+    int totalTime; 
+    CTimer(int tempTotalTime) {
+        totalTime = tempTotalTime;
+    }
+
+    void start() {
+        savedTime = millis();
+    }
+    boolean isFinished() { 
+        int passedTime = millis()- savedTime;
+        if (passedTime > totalTime) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
+
+abstract class ImageAgent{
+    int x, y;
+    PImage image;
+    ImageAgent(int x, int y, PImage image){
+        this.x = x;
+        this.y = y;
+        this.image = image;
+    }
+    void display(){
+        imageMode(CENTER);
+        image(image, x, y);
+    }
+}
+
+class Hero extends ImageAgent{
     PImage hero1;
     PImage hero2;
 
     CTimer timer;
 
     Hero(int x, int y, PImage hero1, PImage hero2){
-        this.x = x;
-        this.y = y;
+        super(x, y, hero1);
         this.timer = new CTimer(250);
         this.hero1 = hero1;
         this.hero2 = hero2;
-        this.hero = hero1;
     }
-    void display(){
+    void update(){
         if ( timer.isFinished() ) {
-            hero = hero == hero1 ? hero2 : hero1;
+            image = image == hero1 ? hero2 : hero1;
             timer.start();
         }
-        imageMode(CENTER);
-        image(hero, x, y);
+        display();
     }
 }
 
-class Enemy{
-    int x;
-    int y;
+class Enemy extends ImageAgent{
     PImage enemy1;
-    Enemy(int x, int y, PImage enemy1){
-        this.x = x;
-        this.y = y;
+    PImage enemy1_down1;
+    PImage enemy1_down2;
+    PImage enemy1_down3;
+    PImage enemy1_down4;
+
+    Enemy(int x, int y, PImage enemy1, PImage enemy1_down1, PImage enemy1_down2, PImage enemy1_down3, PImage enemy1_down4){
+        super(x, y, enemy1);
         this.enemy1 = enemy1;
+        this.enemy1_down1 = enemy1_down1;
+        this.enemy1_down2 = enemy1_down2;
+        this.enemy1_down3 = enemy1_down3;
+        this.enemy1_down4 = enemy1_down4;  
     }
-    void display(){
-        imageMode(CENTER);
-        image(enemy1, x, y);
+    void update(){
+        display();
     }
 }
 
-class PauseResumeButten{
-    int x;
-    int y;
-    PImage game_pause_nor;
+class PauseResumeButten extends ImageAgent{
     PauseResumeButten(int x, int y, PImage game_pause_nor){
-        this.x = x;
-        this.y = y;
+        super(x, y, game_pause_nor);
     }
-    void display(){
-        imageMode(CENTER);
-        image(game_pause_nor, x, y);
+    void update(){
+        display();
     }
 }
 
-class GamePlayButten{
-    int x;
-    int y;
-    PImage game_play;
+class GamePlayButten extends ImageAgent{
     GamePlayButten(int x, int y, PImage game_play){
-        this.x = x;
-        this.y = y;
-        this.game_play = game_play;
+        super(x, y, game_play);
     }
-    void display(){
-        imageMode(CENTER);
-        image(game_play, x, y);
+    void update(){
+        display();
     }
 }
 

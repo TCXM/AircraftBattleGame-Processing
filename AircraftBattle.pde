@@ -1,3 +1,7 @@
+int HERO_SPEED = 5;
+int ENEMY_SPEED = 5;
+int BULLET_SPEED = 5;
+
 class GameManager {
     PFont ink_font;
     PImage background;
@@ -11,7 +15,7 @@ class GameManager {
 
     Hero hero;
     ArrayList<Enemy> enemies = new ArrayList<Enemy>();
-    // ArrayList<Bullet> bullets = new ArrayList<Bullet>();
+    ArrayList<Bullet> bullets = new ArrayList<Bullet>();
     PauseResumeButten pauseResumeButten;
     GamePlayButten gamePlayButten;
 
@@ -44,7 +48,7 @@ class GameManager {
         hero_blowup_n4 = loadImage("Sprites\\hero\\down\\hero_blowup_n4.png");
 
         // Initialize Hero
-        hero = new Hero(width / 2, 700, hero1, hero2);
+        hero = new Hero(width / 2, 700, hero1, hero2, bullet1, bullet2);
         for(int i = 0; i < 4; i++){
             enemies.add(new Enemy((i + 1) * (width / 5), 100, enemy1, enemy1_down1, enemy1_down2, enemy1_down3, enemy1_down4));
         }
@@ -91,6 +95,7 @@ class CTimer {
 abstract class ImageAgent{
     int x, y;
     PImage image;
+    String state = "idle";
     ImageAgent(int x, int y, PImage image){
         this.x = x;
         this.y = y;
@@ -100,24 +105,55 @@ abstract class ImageAgent{
         imageMode(CENTER);
         image(image, x, y);
     }
+    void setState( String state ){
+        this.state = state;
+    }
 }
 
 class Hero extends ImageAgent{
     PImage hero1;
     PImage hero2;
+    PImage bullet1;
+    PImage bullet2;
 
-    CTimer timer;
+    CTimer flyTimer;
 
-    Hero(int x, int y, PImage hero1, PImage hero2){
+    Hero(int x, int y, PImage hero1, PImage hero2, PImage bullet1, PImage bullet2){
         super(x, y, hero1);
-        this.timer = new CTimer(250);
+        this.flyTimer = new CTimer(250);
         this.hero1 = hero1;
         this.hero2 = hero2;
+        this.bullet1 = bullet1;
+        this.bullet2 = bullet2;
     }
     void update(){
-        if ( timer.isFinished() ) {
-            image = image == hero1 ? hero2 : hero1;
-            timer.start();
+        if (state == "idle") {
+            if ( flyTimer.isFinished() ) {
+                image = image == hero1 ? hero2 : hero1;
+                flyTimer.start();
+            }
+        } else if (state == "play") {
+
+            // Move to the mouse
+            int dx = mouseX - x;
+            int dy = mouseY - y;
+            float d = sqrt(dx*dx + dy*dy);
+            if (d > HERO_SPEED) {
+                x += HERO_SPEED * dx / d;
+                y += HERO_SPEED * dy / d;
+            } else {
+                x = mouseX;
+                y = mouseY;
+            }
+
+            // flame animation
+            if ( flyTimer.isFinished() ) {
+                image = image == hero1 ? hero2 : hero1;
+                flyTimer.start();
+            }
+
+            // shoot
+            gameManager.bullets.add(new Bullet(x, y, bullet1));
         }
         display();
     }
@@ -143,7 +179,40 @@ class Enemy extends ImageAgent{
     }
 }
 
-class PauseResumeButten extends ImageAgent{
+class Bullet extends ImageAgent{
+    Bullet(int x, int y, PImage image){
+        super(x, y, image);
+    }
+    void update(){
+        y += BULLET_SPEED;
+        if (y < -10) {
+            gameManager.bullets.remove(this);
+        }
+        display();
+    }
+}
+
+class Butten extends ImageAgent {
+    Butten(int x, int y, PImage image){
+        super(x, y, image);
+    }
+    void update(){
+        if (state == "idle") {
+            if (mousePressed) {
+                if (mouseX > x - image.width/2 && mouseX < x + image.width/2 && mouseY > y - image.height/2 && mouseY < y + image.height/2) {
+                    setState("pressed");
+                }
+            }
+        }
+        if (state == "pressed") {
+            display();
+        }
+        display();
+    }
+    void abstract pressed(){}
+}
+
+class PauseResumeButten extends Butten{
     PauseResumeButten(int x, int y, PImage game_pause_nor){
         super(x, y, game_pause_nor);
     }
@@ -152,7 +221,7 @@ class PauseResumeButten extends ImageAgent{
     }
 }
 
-class GamePlayButten extends ImageAgent{
+class GamePlayButten extends Butten{
     GamePlayButten(int x, int y, PImage game_play){
         super(x, y, game_play);
     }

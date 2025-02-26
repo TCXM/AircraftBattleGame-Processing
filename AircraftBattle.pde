@@ -1,3 +1,11 @@
+import processing.sound.*; // 需要安装sound库
+// Sounds
+SoundFile main_music;
+SoundFile shoot_sound;
+SoundFile explosion_sound;
+SoundFile game_over_sound;
+SoundFile airplane_sound;
+
 int HERO_SPEED = 5;
 int ENEMY_SPEED = 3;
 int BULLET_SPEED = 8;
@@ -17,8 +25,9 @@ class GameManager {
     ArrayList<Enemy> enemies = new ArrayList<Enemy>();
     ArrayList<Bullet> bullets = new ArrayList<Bullet>();
 
-    boolean isGameStarted = false; // 新增：游戏是否已开始
+    boolean isGameStarted = false;
     boolean isGameOver = false;
+    int localFrameCount = 0;
 
     GameManager() {}
 
@@ -48,10 +57,10 @@ class GameManager {
         hero_blowup_n3 = loadImage("Sprites/hero/down/hero_blowup_n3.png");
         hero_blowup_n4 = loadImage("Sprites/hero/down/hero_blowup_n4.png");
 
+
         // Initialize Hero
         hero = new Hero(width / 2, 700, hero1, hero2, bullet1, bullet2);
     }
-
     void update() {
         if (!isGameStarted) {
             showStartScreen();
@@ -62,7 +71,9 @@ class GameManager {
             showGameOver();
             return;
         }
-
+        
+        localFrameCount++;
+        imageMode(CENTER);
         imageMode(CENTER);
         image(background, width / 2, height / 2);
 
@@ -78,11 +89,7 @@ class GameManager {
         for (int i = bullets.size() - 1; i >= 0; i--) {
             Bullet bullet = bullets.get(i);
             bullet.update();
-            if (bullet.isOutOfBounds()) {
-                bullets.remove(i);
-            } else {
-                checkBulletCollision(bullet);
-            }
+            checkBulletCollision(bullet);
         }
 
         spawnNewEnemies();
@@ -94,13 +101,16 @@ class GameManager {
             if (!enemy.isDestroyed() && dist(bullet.x, bullet.y, enemy.x, enemy.y) < 30) {
                 enemy.destroy();
                 bullets.remove(bullet);
+                explosion_sound.play();
                 break;
             }
         }
     }
 
     void spawnNewEnemies() {
-        if (frameCount % 60 == 0) { // Every second
+        // Decrease the spawn interval over time, but cap it at a minimum value
+        int spawnInterval = max(20, 60 - localFrameCount / 100);
+        if (localFrameCount % spawnInterval == 0) {
             enemies.add(new Enemy(int(random(50, width - 50)), 0, enemy1, enemy1_down1, enemy1_down2, enemy1_down3, enemy1_down4));
         }
     }
@@ -108,7 +118,7 @@ class GameManager {
     void showStartScreen() {
         imageMode(CENTER);
         image(background, width / 2, height / 2);
-        fill(255);
+        fill(0);
         textFont(ink_font);
         textAlign(CENTER, CENTER);
         text("Aircraft Battle", width / 2, height / 2 - 100);
@@ -116,6 +126,8 @@ class GameManager {
         if (mousePressed && dist(mouseY, 0, height / 2, 0) < game_play.height / 2) {
             isGameStarted = true;
             hero.setState("play"); // Hero进入战斗状态
+            main_music.stop();
+            airplane_sound.play();
         }
     }
 
@@ -123,19 +135,21 @@ class GameManager {
         imageMode(CENTER);
         image(game_again, width / 2, height / 2);
         image(game_over, width / 2, height / 2 + 100);
-        fill(255);
+        fill(0);
         textFont(ink_font);
-        textAlign(CENTER, CENTER);
-        text("Game Over", width / 2, height / 2 - 100);
         if (mousePressed && dist(mouseY, 0, height / 2, 0) < game_again.height / 2) {
             isGameStarted = true;
-            hero.setState("play"); // Hero进入战斗状态
+            hero.setState("play");
             isGameOver = false;
             enemies.clear();
             hero.score = 0;
             hero.x = width / 2;
             hero.y = 700;
             bullets.clear();
+            localFrameCount = 0;
+            bullets.clear();
+            airplane_sound.play();
+            main_music.stop();
         }
         if (mousePressed && dist(mouseY, 0, height / 2 + 100, 0) < game_over.height / 2) {
             exit();
@@ -143,7 +157,7 @@ class GameManager {
     }
 
     void showScore() {
-        fill(255);
+        fill(0);
         textFont(ink_font);
         textAlign(LEFT, TOP);
         text("Score: " + hero.score, 20, 20);
@@ -214,8 +228,11 @@ class Hero extends ImageAgent {
             }
 
             // Shoot
-            if (frameCount % 10 == 0) { // Shoot every 10 frames
-                gameManager.bullets.add(new Bullet(x, y, bullet1));
+            if (mousePressed) {
+                if (frameCount % 10 == 0) { // Shoot every 10 frames
+                    gameManager.bullets.add(new Bullet(x, y, bullet1));
+                    shoot_sound.play();
+                }
             }
         }
         display();
@@ -241,6 +258,8 @@ class Enemy extends ImageAgent {
             y += ENEMY_SPEED;
             if (y > height) {
                 gameManager.isGameOver = true;
+                game_over_sound.play();
+                airplane_sound.stop();
             }
         } else {
             if (explosionTimer.isFinished()) {
@@ -307,6 +326,13 @@ GameManager gameManager = new GameManager();
 void setup() {
     size(480, 852);
     gameManager.start();
+    // Load Sounds
+    main_music = new SoundFile(this, "Sounds/main.mp3");
+    shoot_sound = new SoundFile(this, "Sounds/shoot.mp3");
+    explosion_sound = new SoundFile(this, "Sounds/boom.mp3");
+    game_over_sound = new SoundFile(this, "Sounds/game_over.mp3");
+    airplane_sound = new SoundFile(this, "Sounds/airplane.mp3");
+    main_music.play();
 }
 
 void draw() {
